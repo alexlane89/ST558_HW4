@@ -1,0 +1,111 @@
+---
+title: "ST558_HW4"
+author: "Charles Lane"
+format: html
+editor: visual
+---
+
+## Advanced Function Writing & API Queries
+
+### Task 1: Conceptual Questions
+
+1. What is the purpose of the lapply() function? What is the equivalent purrr function?
+**Answer:**
+> lapply() uses a defined function on each element of a list or vector. It then returns a list of the same length as the input list or vector with the maniupated elements. In the purrr package, the equivalent function is the purrr::map() function.
+
+2. Suppose we have a list called my_list. Each element of the list is a numeric data frame (all columns are numeric). We want to use lapply() to run the code cor(numeric_matrix, method = "kendall") on each element of the list. Write code to do this below! (I’m really trying to ask you how you specify method = "kendall" when calling lapply())
+> Answer
+
+3. What are two advantages of using purrr functions instead of the BaseR apply family?
+> 1) the tidyverse functions (i.e. purrr) allow us to write consistent shorthand functions.
+> 2) tidyverse functions allow you to specify the type of output. This is an example of consistency that allows us to know for certain what the output of a function will be.
+
+4. What is a side-effect function?
+> A side effect function does not change or transform the underlying data, it just creates a new object or other item based on the existing data. Examples include; print(), plot(), and write_csv(), among others.
+
+5. Why can you name a variable sd in a function and not cause any issues
+with the sd function?
+>Answer
+
+### Task 2: Writing R Functions
+
+#### Function 1 - Root Mean Square Error
+> We would like to write a function that applies the Root Mean Square Function on a response vector and a predictor vector.
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+get_RMSE <- function(p_v, r_v) {
+  sqrt((1/length(p_v))*sum(unlist(map2(p_v, r_v, \(p_v, r_v) (r_v - p_v)^2))))
+  #Add functionality accounting for NA values
+}
+```
+
+> We will now generate test vectors to use with the "get_RMSE" function above.
+
+```{r}
+set.seed(10)
+n <- 100
+x <- runif(n)
+resp <- 3 + 10*x + rnorm(n)
+pred <- predict(lm(resp ~ x), data.frame(x))
+```
+
+> Testing the RMSE function using the generated data sets above yields the following results:
+
+```{r}
+get_RMSE(pred, resp)
+```
+
+> How will the function respond if there are missing or "NA" values in either vector?
+
+```{r}
+#Test of get_RMSE with some N/A values.
+```
+
+#### Function 2 - Mean Absolute Deviation
+> We can also write a similar function to calculate the Mean Absolute Deviation of two vectors.
+
+```{r}
+get_MAE <- function(p_v, r_v) {
+  (1/length(p_v))*sum(unlist(map2(p_v, r_v, \(p_v, r_v) abs(r_v - p_v))))
+}
+```
+
+> Similar to above - generate a set of predictor & response variables to test out the get_MAE() function.
+
+```{r}
+set.seed(10)
+n <- 100
+x <- runif(n)
+resp <- 3 + 10*x + rnorm(n)
+pred <- predict(lm(resp ~ x), data.frame(x))
+
+get_MAE(pred, resp)
+```
+
+#### Function 3 - Wrapper Function for RMSE & MAE
+> Create a wrapper function which combines the preceding functions for calculating RMSE & MAE.
+
+```{r}
+error_calc <- function(p_v, r_v, calc_type = 'both') {
+  m <- get_MAE(p_v, r_v)
+  r <- get_RMSE(p_v, r_v)
+  ifelse(calc_type == 'both', list(m, r), NA)
+}
+```
+
+
+```{r}
+set.seed(10)
+n <- 100
+x <- runif(n)
+resp <- 3 + 10*x + rnorm(n)
+pred <- predict(lm(resp ~ x), data.frame(x))
+
+error_calc(pred, resp, calc_type = 'both')
+#For some reason, this only returns the MAE value. Need to further troubleshoot.
+```
+
