@@ -9,23 +9,26 @@ editor: visual
 
 ### Task 1: Conceptual Questions
 
-1. What is the purpose of the lapply() function? What is the equivalent purrr function?
-**Answer:**
+1. What is the purpose of the lapply() function? What is the equivalent purrr function? \
+
 > lapply() uses a defined function on each element of a list or vector. It then returns a list of the same length as the input list or vector with the maniupated elements. In the purrr package, the equivalent function is the purrr::map() function.
 
-2. Suppose we have a list called my_list. Each element of the list is a numeric data frame (all columns are numeric). We want to use lapply() to run the code cor(numeric_matrix, method = "kendall") on each element of the list. Write code to do this below! (I’m really trying to ask you how you specify method = "kendall" when calling lapply())
+2. Suppose we have a list called my_list. Each element of the list is a numeric data frame (all columns are numeric). We want to use lapply() to run the code cor(numeric_matrix, method = "kendall") on each element of the list. Write code to do this below! (I’m really trying to ask you how you specify method = "kendall" when calling lapply()) \
+
 > Answer
 
-3. What are two advantages of using purrr functions instead of the BaseR apply family?
-> 1) the tidyverse functions (i.e. purrr) allow us to write consistent shorthand functions.
+3. What are two advantages of using purrr functions instead of the BaseR apply family? \
+
+> 1) the tidyverse functions (i.e. purrr) allow us to write consistent shorthand functions. \
 > 2) tidyverse functions allow you to specify the type of output. This is an example of consistency that allows us to know for certain what the output of a function will be.
 
-4. What is a side-effect function?
+4. What is a side-effect function? \
+
 > A side effect function does not change or transform the underlying data, it just creates a new object or other item based on the existing data. Examples include; print(), plot(), and write_csv(), among others.
 
-5. Why can you name a variable sd in a function and not cause any issues
-with the sd function?
->Answer
+5. Why can you name a variable sd in a function and not cause any issues with the sd function? \
+
+> Answer
 
 ### Task 2: Writing R Functions
 
@@ -37,9 +40,11 @@ library(tidyverse)
 ```
 
 ```{r}
-get_RMSE <- function(p_v, r_v) {
-  sqrt((1/length(p_v))*sum(unlist(map2(p_v, r_v, \(p_v, r_v) (r_v - p_v)^2))))
-  #Add functionality accounting for NA values
+get_RMSE <- function(p_v, r_v, ...) {
+  map2(p_v, r_v, \(p_v, r_v) (r_v - p_v)^2) |>
+    unlist() |>
+    mean(...) |>
+    sqrt()
 }
 ```
 
@@ -59,18 +64,23 @@ pred <- predict(lm(resp ~ x), data.frame(x))
 get_RMSE(pred, resp)
 ```
 
-> How will the function respond if there are missing or "NA" values in either vector?
+> How will the function respond if there are missing or "NA" values in either vector? We will start by replacing two of the "response" values with NAs, then run the get_RMSE() function again accounting for the NAs.
 
 ```{r}
-#Test of get_RMSE with some N/A values.
+resp[23] <- NA_real_
+resp[59] <- NA_real_
+
+get_RMSE(pred, resp, na.rm = TRUE)
 ```
 
 #### Function 2 - Mean Absolute Deviation
 > We can also write a similar function to calculate the Mean Absolute Deviation of two vectors.
 
 ```{r}
-get_MAE <- function(p_v, r_v) {
-  (1/length(p_v))*sum(unlist(map2(p_v, r_v, \(p_v, r_v) abs(r_v - p_v))))
+get_MAE <- function(p_v, r_v, ...) {
+  map2(p_v, r_v, \(p_v, r_v) abs(r_v - p_v)) |>
+    unlist() |>
+    mean(...)
 }
 ```
 
@@ -86,14 +96,29 @@ pred <- predict(lm(resp ~ x), data.frame(x))
 get_MAE(pred, resp)
 ```
 
+> Test the get_MAE() function when values from either vector are NA.
+
+```{r}
+resp[48] <- NA_real_
+resp[81] <- NA_real_
+
+get_MAE(pred, resp, na.rm = TRUE)
+```
+
+
 #### Function 3 - Wrapper Function for RMSE & MAE
 > Create a wrapper function which combines the preceding functions for calculating RMSE & MAE.
 
 ```{r}
-error_calc <- function(p_v, r_v, calc_type = 'both') {
-  m <- get_MAE(p_v, r_v)
-  r <- get_RMSE(p_v, r_v)
-  ifelse(calc_type == 'both', list(m, r), NA)
+error_calc <- function(p_v, r_v, metric = "both", ...) {
+  m <- get_MAE(p_v, r_v, ...)
+  r <- get_RMSE(p_v, r_v, ...)
+  comb <- list(m, r)
+  names(comb)[1] <- "MAE"
+  names(comb)[2] <- "RMSE"
+  ifelse(metric == "both", return(comb),
+         ifelse(metric == "MAE", return(comb[1]),
+                ifelse(metric == "RMSE", return(comb[2]))))
 }
 ```
 
@@ -105,7 +130,34 @@ x <- runif(n)
 resp <- 3 + 10*x + rnorm(n)
 pred <- predict(lm(resp ~ x), data.frame(x))
 
-error_calc(pred, resp, calc_type = 'both')
-#For some reason, this only returns the MAE value. Need to further troubleshoot.
+error_calc(pred, resp)
+```
+
+> Test with a non-default 'calc_type' value.
+
+```{r}
+error_calc(pred, resp, metric = "RMSE")
+```
+
+> Again - we'll attempt the combined function if some values are NA.
+
+```{r}
+resp[7] <- NA_real_
+resp[61] <- NA_real_
+resp[92] <- NA_real_
+
+error_calc(pred, resp, na.rm = TRUE)
+```
+
+### Task 3: Connecting to an API
+
+```{r}
+api_key <- '7cb9cb041cf24cbe9c0b87d48ac7f1dd'
+```
+
+> Identify news resources related to NC State
+
+```{r}
+x <- GET(url = "newsapi.org", config(token = api_key))
 ```
 
