@@ -3,6 +3,9 @@ title: "ST558_HW4"
 author: "Charles Lane"
 format: html
 editor: visual
+execute: 
+  error: true
+  output: true
 ---
 
 ## Advanced Function Writing & API Queries
@@ -15,7 +18,14 @@ editor: visual
 
 2. Suppose we have a list called my_list. Each element of the list is a numeric data frame (all columns are numeric). We want to use lapply() to run the code cor(numeric_matrix, method = "kendall") on each element of the list. Write code to do this below! (I’m really trying to ask you how you specify method = "kendall" when calling lapply()) \
 
-> Answer
+```{r}
+df_a <- data.frame(a = c(1, 2, 3, 4), b = c(8, 5, 2, 7))
+df_b <- data.frame(x = c(5, 6, 4, 8), y = c(14, 5, 76, 23))
+my_list <- list(df_a, df_b)
+
+lapply(my_list, FUN = cor, method = "kendall")
+```
+
 
 3. What are two advantages of using purrr functions instead of the BaseR apply family? \
 
@@ -28,7 +38,7 @@ editor: visual
 
 5. Why can you name a variable sd in a function and not cause any issues with the sd function? \
 
-> Answer
+> Because of 'Lexical Scoping', i.e. the separate environment which is temporarily in use while the function executes. This means that variables defined within the function are only effective/active while a function is being executed and/or called.
 
 ### Task 2: Writing R Functions
 
@@ -111,6 +121,15 @@ get_MAE(pred, resp, na.rm = TRUE)
 
 ```{r}
 error_calc <- function(p_v, r_v, metric = "both", ...) {
+  if (!is.vector(p_v) | !is.vector(r_v)) {
+    stop("Data entered does not include 2 vectors")
+  }
+  if (!is.atomic(p_v) | !is.atomic(r_v)) {
+    stop("Data entered does not include 2 atomic vectors")
+  }
+  if (!is.numeric(p_v) | !is.numeric(r_v)) {
+    stop("Data entered is not numeric")
+  }
   m <- get_MAE(p_v, r_v, ...)
   r <- get_RMSE(p_v, r_v, ...)
   comb <- list(m, r)
@@ -149,15 +168,64 @@ resp[92] <- NA_real_
 error_calc(pred, resp, na.rm = TRUE)
 ```
 
+> The final test will be to verify the function stops & gives an error message if incorrect data is supplied. First by supplying a dataframe instead of a vector.
+
+```{r}
+df_1 <- as.data.frame(c(1, 2, 3, 4))
+vec_2 <- c(5, "lion", 9, 8)
+
+error_calc(df_1, vec_2)
+```
+
+> Next by supplying a vector with a non-numeric element.
+
+```{r}
+v1 <- c(79, 28, 50, 27, 49)
+v2 <- c(14, 60, 96, "lion", 45)
+
+error_calc(v1, v2)
+```
+
+
 ### Task 3: Connecting to an API
 
 ```{r}
-api_key <- '7cb9cb041cf24cbe9c0b87d48ac7f1dd'
+library(httr)
+library(jsonlite)
 ```
 
-> Identify news resources related to NC State
+> Identify news resources related to Autism and parse the data accordingly to disply individual article information:
 
 ```{r}
-x <- GET(url = "newsapi.org", config(token = api_key))
+x <- GET(url = "https://newsapi.org/v2/everything?q=autism&apiKey=7cb9cb041cf24cbe9c0b87d48ac7f1dd&language=en")
+
+parsed <- fromJSON(rawToChar(x$content))
+t_cont <- as_tibble(parsed$articles)
+head(t_cont)
+```
+
+> Write a function to query newsapi.org with the following selections:
+1) Title/subject for search (i.e. keyword)
+2) A time period to search from
+3) An API key
+
+```{r}
+pull_news <- function(keyword = "NCSU", from_time = "2024-06-10",
+                      api_key = "7cb9cb041cf24cbe9c0b87d48ac7f1dd") {
+  f_url <- paste0("https://newsapi.org/v2/everything?q=", keyword,
+                  "&from=", from_time,
+                  "&apiKey=", api_key,
+                  "&language=en")
+  x <- GET(f_url)
+  parsed <- fromJSON(rawToChar(x$content))
+  t_cont <- as_tibble(parsed$articles)
+  return(t_cont)
+}
+
+head(pull_news(keyword = "Gettysburg"))
+```
+
+```{r}
+head(pull_news("Descartes", from_time = "2024-06-16"))
 ```
 
